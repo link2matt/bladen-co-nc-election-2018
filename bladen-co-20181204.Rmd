@@ -11,13 +11,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Map and Tables of US Congress 9th District for N.C. Race
 
-Bladen County, North Carolina may have been a target of a campaign of electoral fraud, acoording to media reports <https://www.nytimes.com/2018/12/04/us/politics/north-carolina-election-fraud.html>. 
-Dr. Michael Bitzer of Catawba College has identified several unusual trends evident in the race for US Congress in the 9th District <http://www.oldnorthstatepolitics.com/2018/12/NCs-9th-competitive-and-contested-CD.html>.  Dr. Bitzer reports unsually low rates of acceptance for absentee mail-in ballots for voters in Bladen County who voted in the US Congres 9th District race. When this report was published, Republican Mark Harris led his opponent Democrat Dan McCready by less than 1,000 votes in this compettive contest. 
+Bladen County, North Carolina may have been a target of a campaign of electoral fraud, according to media reports <https://www.nytimes.com/2018/12/04/us/politics/north-carolina-election-fraud.html>. 
+Dr. Michael Bitzer of Catawba College has identified several unusual trends evident in the race for US Congress in the 9th District <http://www.oldnorthstatepolitics.com/2018/12/NCs-9th-competitive-and-contested-CD.html>.  Dr. Bitzer reports unusually low rates of acceptance for absentee mail-in ballots for voters in Bladen County who voted in the US Congress 9th District race. When this report was published, Republican Mark Harris led his opponent Democrat Dan McCready by less than 1,000 votes in this competitive contest. 
 
 This analysis attempts to look deeper into Bladen County by generating a map of voters, which takes into account voters' race. Using an interactive map, this analysis identifies areas of concern where voters may have been targeted.  This map allows a geographic overview of where rejected ballots were cast by African-American voters.
 
 ## Methods
-Ths analysis was generated using the R programming language using data from the North Carolina State Board of Elections (NCSBE).  Data on election results and voters are availabe online for download <https://dl.ncsbe.gov/index.html>.
+This analysis was generated using the R programming language using data from the North Carolina State Board of Elections (NCSBE).  Data on election results and voters are available online for download <https://dl.ncsbe.gov/index.html>.
 ```{r warning=FALSE, message=FALSE}
 library(readr)
 library(dplyr)
@@ -30,7 +30,7 @@ library(scales)
 ```
 
 
-NCSBE makes availabe an 800MB file with details on all votes cast in this election, including all requests for absentee ballots.  Because of the size of this data file and its' public availabiilty from NCSBE, this file isn't stored in the github repository for this analysis.  The file absentee_20181106.csv was downloaded for this report on December 4, 2018.
+NCSBE makes available an 800MB file with details on all votes cast in this election, including all requests for absentee ballots.  Because of the size of this data file and its' public availability from NCSBE, this file isn't stored in the github repository for this analysis.  The file absentee_20181106.csv was downloaded for this report on December 4, 2018.
 
 ```{r eval=FALSE}
 all_absentee <- read.csv("~/Desktop/NC2018/absentee_20181106.csv")
@@ -48,7 +48,7 @@ allData9thBladenMail <- allData9thBladenMail %>%
 write.csv(allData9thBladenMail, file = "geocode/Mail9thBladenx.csv")
 ```
 
-The analysis relies on the geocoding service available at geocod.io.  Addresses of voters who attempted to vote with mail-in ballots were geocoded, generating latitude and longtitude locations for the voters.  For this analysis, a copy of the ballots data was read from a file downloaded from geocodd.io.
+The analysis relies on the geocoding service available at geocod.io.  Addresses of voters who attempted to vote with mail-in ballots were geocoded, generating latitude and longitude locations for the voters.  For this analysis, a copy of the ballots data was read from a file downloaded from geocodd.io.
 
 ```{r}
 ## Load data analyzed with geocodio
@@ -101,7 +101,7 @@ Mail9thBladen <- Mail9thBladen %>%
 Mail9thBladen$race2 <- as.factor(Mail9thBladen$race2)
 ```
 
-# Map of Mail-In Ballots
+## Map of Mail-In Ballots
 This analysis includes a map generated from the addresses of voters who tried to vote via mail-in ballot in the race for US Congress 9th District.  Voters are characterized as being either African-American or another race other than African-American, including white voters.  Voters are further categorized as either having their mail-in ballot accepted or rejected.  
 
 ```{r main map}
@@ -118,13 +118,13 @@ cofrace3 <- colorFactor(c("#339933", "#FF3030", "#DDDD00", "#888888"),
                         domain=levelsRace3)
 ```
 
-Below is the map of all mail-in ballots for the 9th Congressional District, categorized by race and whether the ballot was accepted. The larger gray cirles are areas where press reports indicate that voters may have been targeted as part of a campaign of voter fraud. 
+Below is the map of all mail-in ballots for the 9th Congressional District, categorized by race and whether the ballot was accepted. The larger gray circles are around areas where press reports indicate that voters may have been targeted as part of a campaign of voter fraud. 
 ```{r}
 m <- leaflet(Mail9thBladen) %>% 
   addProviderTiles(providers$CartoDB.Positron) %>% 
   setView(-78.604867, 34.629176, zoom = 10) %>% 
   addCircles(suspectAreas$Longitude, suspectAreas$Latitude,
-             radius = 2000, color = "#666666", stroke = T, fillOpacity = 0.1
+             radius = 2000, color = "#444444", stroke = T, fillOpacity = 0.1
   ) %>% 
   addCircles(~Longitude, ~Latitude, popup= ~fullAddress,
              weight = 3, radius=40, 
@@ -134,9 +134,9 @@ m <- leaflet(Mail9thBladen) %>%
 m
 ```
 
-# Additional Anaysis of Ballots and Voters
+## Additional Analysis of Ballots and Voters
 
-This analysis includes a comparison between the rate of acceptance of ballots cast by African-American voters and white voters.  The two largest cities in the Bladen county involved in this contest are Bladensboro and Elizabethtown.  Ballots cast by African-Americans in Baldensboro were accepted at an unusually low rate, less than 20%.  Below is a tabulation of the votes for this part of the analysis.
+This analysis includes a comparison between the rate of acceptance of ballots cast by African-American voters and white voters.  The two largest cities in the Bladen county involved in this contest are Bladenboro and Elizabethtown.  Ballots cast by African-Americans in Baldenboro were accepted at an unusually low rate, less than 20%.  Below is a tabulation of the votes for this part of the analysis.
 
 ```{r}
 tableCity2 <- Mail9thBladen %>% 
@@ -211,4 +211,4 @@ datatable(ballots4display)
 ```
 
 
-This R markdown document and some data files used in this analysis are available on GitHub under the link2matt account <https://github.com/link2matt?tab=repositories>
+This R markdown document and some data files used in this analysis are available on GitHub under the link2matt account <https://github.com/link2matt/bladen-co-nc-election-2018>
