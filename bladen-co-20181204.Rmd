@@ -102,7 +102,7 @@ Mail9thBladen$race2 <- as.factor(Mail9thBladen$race2)
 ```
 
 ## Map of Mail-In Ballots
-This analysis includes a map generated from the addresses of voters who tried to vote via mail-in ballot in the race for US Congress 9th District.  Voters are characterized as being either African-American or another race other than African-American, including white voters.  Voters are further categorized as either having their mail-in ballot accepted or rejected.  
+This analysis includes a map generated from the addresses of voters who tried to vote via mail-in ballot in the race for US Congress 9th District.  Voters are characterized as being either African-American or another race other than African-American, including white voters.  Voters are further categorized as either having their mail-in ballot accepted or rejected.  Rejected ballots include both ballots that were received by the elections board but not counted and ballots that were never received by the election board.
 
 ```{r main map}
 ## Add Variaable coming race and ballot status
@@ -194,7 +194,7 @@ resultsTable$White <- percent(resultsTable$White)
 
 
 ## Table: Rate of Acceptance for Bladen Absentee Ballots
-The table below reports the rate at which mail-in ballots for the 9th District were accepted for African-American and White Voters in two cities and the entire county.
+The table below reports the rate at which mail-in ballots for the 9th District were accepted for African-American and White Voters in two cities and the entire county. Rejected ballots include both ballots that were received by the elections board but not counted and ballots that were never received by the election board.
 ```{r echo=FALSE}
 datatable(resultsTable)
 
