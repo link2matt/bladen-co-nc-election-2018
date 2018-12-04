@@ -192,12 +192,15 @@ resultsTable$`African-American` <- percent(resultsTable$`African-American`)
 resultsTable$White <- percent(resultsTable$White)
 ```
 
+
+## Table: Rate of Acceptance for Bladen Absentee Ballots
 The table below reports the rate at which mail-in ballots for the 9th District were accepted for African-American and White Voters in two cities and the entire county.
 ```{r echo=FALSE}
 datatable(resultsTable)
 
 ```
 
+## Table: All Absentee Ballots
 Below is table of all mail-in ballots in Bladen County for the US 9th District.  This table can be sorted and searched.  Points in the map above have popups that reveal the street address of voters.
 
 ```{r ballots}
@@ -205,10 +208,9 @@ Below is table of all mail-in ballots in Bladen County for the US 9th District. 
 ballots4display <- Mail9thBladen %>% 
   select(race2, voter_street_address, voter_city, voter_zip, voter_party_code, ballot_req_dt,
          ballot_rtn_dt, ballot_rtn_status, fullAddress)
-
-datatable(ballots4display)
-
 ```
 
-
+```{r echo=FALSE}
+datatable(ballots4display)
+```
 This R markdown document and some data files used in this analysis are available on GitHub under the link2matt account <https://github.com/link2matt/bladen-co-nc-election-2018>
