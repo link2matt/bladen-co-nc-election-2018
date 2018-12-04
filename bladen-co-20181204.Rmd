@@ -1,0 +1,214 @@
+---
+title: "Bladen County Absentee Ballots in 2018 Election"
+author: "Matt DeVries"
+date: "12/4/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Map and Tables of US Congress 9th District for N.C. Race
+
+Bladen County, North Carolina may have been a target of a campaign of electoral fraud, acoording to media reports <https://www.nytimes.com/2018/12/04/us/politics/north-carolina-election-fraud.html>. 
+Dr. Michael Bitzer of Catawba College has identified several unusual trends evident in the race for US Congress in the 9th District <http://www.oldnorthstatepolitics.com/2018/12/NCs-9th-competitive-and-contested-CD.html>.  Dr. Bitzer reports unsually low rates of acceptance for absentee mail-in ballots for voters in Bladen County who voted in the US Congres 9th District race. When this report was published, Republican Mark Harris led his opponent Democrat Dan McCready by less than 1,000 votes in this compettive contest. 
+
+This analysis attempts to look deeper into Bladen County by generating a map of voters, which takes into account voters' race. Using an interactive map, this analysis identifies areas of concern where voters may have been targeted.  This map allows a geographic overview of where rejected ballots were cast by African-American voters.
+
+## Methods
+Ths analysis was generated using the R programming language using data from the North Carolina State Board of Elections (NCSBE).  Data on election results and voters are availabe online for download <https://dl.ncsbe.gov/index.html>.
+```{r warning=FALSE, message=FALSE}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(knitr)
+library(DT)
+library(leaflet)
+library(scales)
+```
+
+
+NCSBE makes availabe an 800MB file with details on all votes cast in this election, including all requests for absentee ballots.  Because of the size of this data file and its' public availabiilty from NCSBE, this file isn't stored in the github repository for this analysis.  The file absentee_20181106.csv was downloaded for this report on December 4, 2018.
+
+```{r eval=FALSE}
+all_absentee <- read.csv("~/Desktop/NC2018/absentee_20181106.csv")
+
+## Filter Mail-In, US Congress 9 Race, Bladen County
+allData9thBladenMail <- all_absentee %>% 
+        filter(cong_dist_desc == "CONGRESSIONAL DISTRICT 9" & county_desc == "BLADEN") %>% 
+        filter(ballot_req_delivery_type == "MAIL")
+
+## CREATE ADDRESS FOR GEOCODING
+allData9thBladenMail <- allData9thBladenMail %>% 
+        mutate(fullAddress = paste0(voter_street_address, ", ", voter_city, ", NC ", voter_zip))
+
+## Write pre-geocoded data to file
+write.csv(allData9thBladenMail, file = "geocode/Mail9thBladenx.csv")
+```
+
+The analysis relies on the geocoding service available at geocod.io.  Addresses of voters who attempted to vote with mail-in ballots were geocoded, generating latitude and longtitude locations for the voters.  For this analysis, a copy of the ballots data was read from a file downloaded from geocodd.io.
+
+```{r}
+## Load data analyzed with geocodio
+Mail9thBladen <- read.csv("geocode/Mail9thBladenx_geocodio.csv")
+names(Mail9thBladen)[names(Mail9thBladen)=="fullAdress"] <- "fullAddress"
+```
+
+
+Additional data about voters was retrieved from the NCSBE about voter's ethnicity in Bladen County.  Additionally, press reports identified several voters who suspected that they had been targeted as part of a campaign of electoral fraud.  These voters location information was retrieved in order to identify potential areas where fraud occurred.
+```{r}
+## Voters in Bladen County, includes ethnicity Data
+bladenVoters <- read.table("data/ncvoter9.txt", header = T)
+
+bladenVoters <- bladenVoters %>% 
+        select(county_desc, voter_reg_num, last_name, first_name, middle_name,
+               name_suffix_lbl, res_street_address, res_city_desc, state_cd,
+               zip_code, race_code, ethnic_code, party_cd, gender_code,
+               birth_age, precinct_abbrv, precinct_desc, cong_dist_abbrv)
+
+## Voters mentioned in press
+votersPress <-  Mail9thBladen %>% 
+  filter(voter_first_name %in% "EMMA" & voter_last_name %in% "SHIPMAN") 
+votersPress <-  Mail9thBladen %>% 
+  filter(voter_first_name %in% "DATESHA" & voter_last_name %in% "MONTGOMERY") %>% 
+  bind_rows(votersPress)
+votersPress <-  Mail9thBladen %>% 
+  filter(voter_first_name %in% "JENEVA" & voter_last_name %in% "LEGIONS") %>% 
+  bind_rows(votersPress)
+
+suspectAreas <- votersPress %>% 
+  filter(ballot_rtn_status != "ACCEPTED")
+
+## Add race2 variable with Latino to Mail9thBladen
+bladenEthnic <- bladenVoters %>% 
+        select(voter_reg_num,
+        ethnic_code)
+
+Mail9thBladen <- left_join(x = Mail9thBladen, y = bladenEthnic, by = c("voter_reg_num", "voter_reg_num"))
+
+Mail9thBladen <- Mail9thBladen %>% 
+        mutate(race2 = case_when(
+                (race=="WHITE" & ethnic_code != "HL") ~ "White",
+                race=="BLACK or AFRICAN AMERICAN" ~ "African-American",
+                race=="WHITE" & ethnic_code == "HL" ~ "Latino",
+                race=="OTHER" ~ "Other",
+                race == "UNDESIGNATED" ~ "Undesignated",
+                race== "INDIAN AMERICAN or ALASKA NATIVE" ~ "Native Am."
+        ))
+
+Mail9thBladen$race2 <- as.factor(Mail9thBladen$race2)
+```
+
+# Map of Mail-In Ballots
+This analysis includes a map generated from the addresses of voters who tried to vote via mail-in ballot in the race for US Congress 9th District.  Voters are characterized as being either African-American or another race other than African-American, including white voters.  Voters are further categorized as either having their mail-in ballot accepted or rejected.  
+
+```{r main map}
+## Add Variaable coming race and ballot status
+Mail9thBladen <-  Mail9thBladen %>% 
+  mutate(mapRaceBallot = ifelse(race2=="African-American", "African-American ", "Other Race ")) %>% 
+  mutate(mapRaceBallot = paste0(mapRaceBallot, ifelse(ballot_rtn_status=="ACCEPTED", "Accepted", "Rejected")))
+
+Mail9thBladen$mapRaceBallot <- as.factor(Mail9thBladen$mapRaceBallot)
+
+levelsRace3 <- levels(Mail9thBladen$mapRaceBallot)
+
+cofrace3 <- colorFactor(c("#339933", "#FF3030", "#DDDD00", "#888888"), 
+                        domain=levelsRace3)
+```
+
+Below is the map of all mail-in ballots for the 9th Congressional District, categorized by race and whether the ballot was accepted. The larger gray cirles are areas where press reports indicate that voters may have been targeted as part of a campaign of voter fraud. 
+```{r}
+m <- leaflet(Mail9thBladen) %>% 
+  addProviderTiles(providers$CartoDB.Positron) %>% 
+  setView(-78.604867, 34.629176, zoom = 10) %>% 
+  addCircles(suspectAreas$Longitude, suspectAreas$Latitude,
+             radius = 2000, color = "#666666", stroke = T, fillOpacity = 0.1
+  ) %>% 
+  addCircles(~Longitude, ~Latitude, popup= ~fullAddress,
+             weight = 3, radius=40, 
+             color=~cofrace3(mapRaceBallot), stroke = TRUE, fillOpacity = 0.3) %>% 
+  addLegend(colors = c("#339933", "#FF3030", "#DDDD00", "#888888"), 
+            labels = c(levelsRace3))
+m
+```
+
+# Additional Anaysis of Ballots and Voters
+
+This analysis includes a comparison between the rate of acceptance of ballots cast by African-American voters and white voters.  The two largest cities in the Bladen county involved in this contest are Bladensboro and Elizabethtown.  Ballots cast by African-Americans in Baldensboro were accepted at an unusually low rate, less than 20%.  Below is a tabulation of the votes for this part of the analysis.
+
+```{r}
+tableCity2 <- Mail9thBladen %>% 
+        group_by(voter_city, race2) %>% 
+        count(ballot_rtn_status) %>% 
+        spread(key = ballot_rtn_status, value = n)
+
+## Turns NA's to Zero's
+tableCity2$ACCEPTED <- ifelse(is.na(tableCity2$ACCEPTED), 0, tableCity2$ACCEPTED)
+tableCity2$V1 <- ifelse(is.na(tableCity2$V1), 0, tableCity2$V1)
+tableCity2$`RETURNED UNDELIVERABLE` <- ifelse(is.na(tableCity2$`RETURNED UNDELIVERABLE`), 0, tableCity2$`RETURNED UNDELIVERABLE`)
+tableCity2$SPOILED <- ifelse(is.na(tableCity2$SPOILED), 0, tableCity2$SPOILED)
+tableCity2$`VOTER SIGNATURE MISSING` <- ifelse(is.na(tableCity2$`VOTER SIGNATURE MISSING`), 0, tableCity2$`VOTER SIGNATURE MISSING`)
+tableCity2$`WITNESS INFO INCOMPLETE` <- ifelse(is.na(tableCity2$`WITNESS INFO INCOMPLETE`), 0, tableCity2$`WITNESS INFO INCOMPLETE`)
+
+## Calculate all 9th Mail-In Votes and add back to tableCity2
+countyNums <- tableCity2 %>% 
+        group_by(race2)  %>% 
+         summarise_at(vars(V1:`WITNESS INFO INCOMPLETE`), sum, na.rm =T) 
+
+countyNums <- countyNums %>% 
+        mutate(propBallot = ACCEPTED/(V1 + ACCEPTED + `RETURNED UNDELIVERABLE` + 
+             SPOILED + `VOTER SIGNATURE MISSING` + `WITNESS INFO INCOMPLETE`))
+countyNums<- countyNums %>% 
+        select(race2, propBallot)
+
+
+countyResults <- select(spread(countyNums, key=race2, value = propBallot), `African-American`, White)
+countyResults <- cbind(as.data.frame("All Ballots for US 9th"), countyResults)
+
+names(countyResults)[names(countyResults)=="\"All Ballots for US 9th\""] <- 'Location'
+
+
+tableCity2 <- tableCity2 %>% 
+        mutate(propBallot = ACCEPTED/(V1 + ACCEPTED + `RETURNED UNDELIVERABLE` + 
+          SPOILED + `VOTER SIGNATURE MISSING` + `WITNESS INFO INCOMPLETE`))
+
+tableCity3 <- tableCity2 %>% 
+        select( voter_city, race2, propBallot) %>% 
+        filter(voter_city %in% c("BLADENBORO", "ELIZABETHTOWN"))
+
+cityResults <- select(spread(tableCity3, key=race2, value = propBallot), 
+                      voter_city, `African-American`, White)
+
+names(cityResults)[names(cityResults)=="voter_city"] <- 'Location'
+
+cityResults$Location <- as.character(cityResults$Location)
+countyResults$Location <- as.character(countyResults$Location)
+
+## Convert numbers to percentage
+resultsTable <- bind_rows(as.data.frame(cityResults), countyResults)
+resultsTable$`African-American` <- percent(resultsTable$`African-American`)
+resultsTable$White <- percent(resultsTable$White)
+```
+
+The table below reports the rate at which mail-in ballots for the 9th District were accepted for African-American and White Voters in two cities and the entire county.
+```{r echo=FALSE}
+datatable(resultsTable)
+
+```
+
+Below is table of all mail-in ballots in Bladen County for the US 9th District.  This table can be sorted and searched.  Points in the map above have popups that reveal the street address of voters.
+
+```{r ballots}
+## Ballots for Display
+ballots4display <- Mail9thBladen %>% 
+  select(race2, voter_street_address, voter_city, voter_zip, voter_party_code, ballot_req_dt,
+         ballot_rtn_dt, ballot_rtn_status, fullAddress)
+
+datatable(ballots4display)
+
+```
+
+
+This R markdown document and some data files used in this analysis are available on GitHub under the link2matt account <https://github.com/link2matt?tab=repositories>
